@@ -75,7 +75,7 @@ curl -fsSL https://raw.githubusercontent.com/OzlevyQ/claude-tv-notify/main/hooks
 chmod +x ~/.claude/hooks/tv-notify.sh
 
 # Point the hook at your TV (replace with your actual IP)
-sed -i '' 's|YOUR_TV_IP|192.168.1.149|' ~/.claude/hooks/tv-notify.sh
+sed -i '' 's|YOUR_TV_IP|your-ip-address|' ~/.claude/hooks/tv-notify.sh
 ```
 
 ### 4. Register the hook in `~/.claude/settings.json`
@@ -106,7 +106,7 @@ Merge this into your existing file (keep your other top-level keys intact):
 First, confirm TvOverlay is reachable from your Mac:
 
 ```bash
-curl -s -X POST http://192.168.1.149:5001/notify \
+curl -s -X POST http://your-ip-address:5001/notify \
   -H "Content-Type: application/json" \
   -d '{"title":"Hello","message":"Smoke test","duration":8,"corner":"top_end"}'
 ```
