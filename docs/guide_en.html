@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Guide: Claude Code Notifications on Android TV</title>
+<style>
+  @page { size: A4; margin: 18mm 16mm; }
+  * { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, "Helvetica Neue", Arial, sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #1f2328;
+  }
+  h1 {
+    font-size: 22pt;
+    color: #CC785C;
+    border-bottom: 3px solid #CC785C;
+    padding-bottom: 8px;
+    margin-bottom: 4px;
+  }
+  .subtitle { color: #555; margin-top: 0; font-size: 11pt; }
+  h2 {
+    font-size: 15pt;
+    color: #1f2328;
+    margin-top: 22px;
+    margin-bottom: 8px;
+    padding: 6px 10px;
+    background: #f6f5f2;
+    border-left: 4px solid #CC785C;
+  }
+  h3 { font-size: 12pt; margin-top: 14px; margin-bottom: 4px; }
+  code {
+    font-family: "Menlo", "Monaco", monospace;
+    background: #f6f5f2;
+    padding: 1px 5px;
+    border-radius: 3px;
+    font-size: 10pt;
+  }
+  pre {
+    background: #1f2328;
+    color: #f6f5f2;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-family: "Menlo", "Monaco", monospace;
+    font-size: 9.5pt;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    page-break-inside: avoid;
+  }
+  pre code { background: transparent; color: inherit; padding: 0; }
+  .callout {
+    background: #fff8f0;
+    border: 1px solid #f0d5b8;
+    border-left: 4px solid #CC785C;
+    padding: 10px 14px;
+    margin: 12px 0;
+    border-radius: 4px;
+  }
+  .note { background: #eef6ff; border-color: #90b8e0; border-left-color: #3b82f6; }
+  .warn { background: #fff5f5; border-color: #f0b8b8; border-left-color: #dc2626; }
+  ol, ul { margin: 4px 0 8px 24px; }
+  li { margin-bottom: 4px; }
+  img.screenshot {
+    display: block;
+    max-width: 78%;
+    max-height: 360px;
+    margin: 12px auto;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.08);
+    page-break-inside: avoid;
+  }
+  .caption {
+    text-align: center;
+    font-size: 9pt;
+    color: #666;
+    margin-top: -8px;
+    margin-bottom: 14px;
+  }
+  .step-num {
+    display: inline-block;
+    background: #CC785C;
+    color: #fff;
+    width: 26px; height: 26px;
+    border-radius: 50%;
+    text-align: center;
+    line-height: 26px;
+    font-weight: bold;
+    margin-right: 8px;
+    font-size: 10pt;
+  }
+  hr { border: none; border-top: 1px solid #ddd; margin: 24px 0; }
+  .footer {
+    margin-top: 30px;
+    padding-top: 14px;
+    border-top: 1px solid #ddd;
+    font-size: 9pt;
+    color: #666;
+  }
+</style>
+</head>
+<body>
+
+<h1>Claude Code Notifications on Android TV</h1>
+<p class="subtitle">Wire up a Claude Code <code>Stop</code> hook that pops a notification on your Android TV with a Hebrew summary of Claude's last reply — visible over any content.</p>
+
+<div class="callout note">
+  <b>End result:</b> Every time Claude Code finishes a response in your terminal, a notification appears on your TV with the project name and a one-sentence summary of the reply. Works over Netflix, YouTube, anything playing.
+</div>
+
+<h2>Prerequisites</h2>
+<ul>
+  <li>A <b>Google TV / Android TV</b> (tested on TCL).</li>
+  <li>A Mac with <b>Claude Code</b> installed (verify: <code>claude --version</code>).</li>
+  <li>Mac and TV on the same Wi-Fi network.</li>
+  <li><code>jq</code> and <code>curl</code> on the Mac (both shipped by default on macOS).</li>
+</ul>
+
+<h2><span class="step-num">1</span> Install TvOverlay on the TV</h2>
+<p>TvOverlay is a free (with paid tier) app that exposes an HTTP API on the TV and displays overlay notifications above any content.</p>
+
+<h3>What to look for</h3>
+<ul>
+  <li>Open Google Play Store on the TV and search for <b>TvOverlay</b>.</li>
+  <li>Package: <code>com.tabdeveloper.tvoverlay</code></li>
+  <li>If it doesn't appear in on-TV search, open this URL in a browser on your Mac/phone: <code>https://play.google.com/store/apps/details?id=com.tabdeveloper.tvoverlay</code> and hit <b>Install</b> selecting your TV as the target device.</li>
+</ul>
+
+<img class="screenshot" src="images/IMG_1225.JPG" alt="TvOverlay on the Google Play Store">
+<p class="caption">Figure 1 — TvOverlay on the Google Play Store</p>
+
+<h2><span class="step-num">2</span> Get the TV's IP address</h2>
+<p>Open the <b>TvOverlay</b> app on the TV. On the main screen, look at the bottom-left: you'll see a QR code labelled <b>TvOverlay Remote</b>, and directly below it the line <i>"You can also connect manually"</i> — <b>that's where the IP address and port appear</b>. The port is usually <code>5001</code>.</p>
+
+<img class="screenshot" src="images/IMG_1226.jpg" alt="TvOverlay showing IP below QR code">
+<p class="caption">Figure 2 — TvOverlay — the IP lives under the QR code, in the "You can also connect manually" section (circled in red)</p>
+
+<div class="callout warn">
+  <b>Heads up:</b> The IP may change after a reboot of the TV or router. If notifications stop arriving, re-check the IP and update the script. Consider reserving a static DHCP lease for your TV in the router.
+</div>
+
+<p>For the rest of this guide we'll use <code>192.168.1.149:5001</code> as a placeholder — replace with your actual address.</p>
+
+<h2><span class="step-num">3</span> Smoke test — send a manual curl</h2>
+<p>Before wiring the hook, confirm the basic path works. From your Mac terminal:</p>
+<pre><code>curl -s -X POST http://192.168.1.149:5001/notify \
+  -H "Content-Type: application/json" \
+  -d '{"title":"Test","message":"Hello from the Mac","duration":8,"corner":"top_end"}'</code></pre>
+<p>If a popup appears on the TV, you're good to go. If not, verify the TV is on, TvOverlay is running, and it has the "Display over other apps" permission granted.</p>
+
+<h2><span class="step-num">4</span> Create the hook script</h2>
+<p>Create the directory <code>~/.claude/hooks</code> and the file <code>tv-notify.sh</code>:</p>
+<pre><code>mkdir -p ~/.claude/hooks
+nano ~/.claude/hooks/tv-notify.sh</code></pre>
+
+<p>Paste the following (change the IP at the top to match yours):</p>
+<pre><code>#!/bin/bash
+# Claude Code Stop hook → TvOverlay notification on Android TV.
+
+if [[ -n "$TV_NOTIFY_RUNNING" ]]; then
+  exit 0
+fi
+
+TV="http://192.168.1.149:5001/notify"
+
+INPUT=$(cat)
+CWD=$(printf '%s' "$INPUT" | jq -r '.cwd // empty')
+TRANSCRIPT=$(printf '%s' "$INPUT" | jq -r '.transcript_path // empty')
+PROJECT=$(basename "${CWD:-$PWD}")
+
+RAW=""
+if [[ -n "$TRANSCRIPT" && -f "$TRANSCRIPT" ]]; then
+  RAW=$(jq -r '
+      select(.type=="assistant" and .message.role=="assistant")
+      | (.message.content
+         | if type=="array" then map(select(.type=="text").text) | join(" ") else . end)
+      | select(. != null)
+      | gsub("\\s+"; " ")
+      | gsub("^\\s+|\\s+$"; "")
+      | select(length > 0)
+      ' "$TRANSCRIPT" 2>/dev/null \
+    | tail -1 \
+    | sed -E 's/```[^`]*```//g; s/`[^`]*`//g' \
+    | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')
+fi
+
+BODY=""
+if [[ -n "$RAW" ]] && command -v claude >/dev/null 2>&1; then
+  PROMPT="The text below is an assistant's response from a coding session. Summarize what the assistant did or answered, in ONE short Hebrew sentence (up to 15 words). Return ONLY the Hebrew sentence.
+
+BEGIN_TEXT
+${RAW}
+END_TEXT"
+  BODY=$(TV_NOTIFY_RUNNING=1 perl -e 'alarm shift; exec @ARGV' 25 claude -p --model haiku "$PROMPT" 2>/dev/null \
+    | tr '\n' ' ' | sed -E 's/[[:space:]]+/ /g; s/^ //; s/ $//')
+fi
+
+if [[ -z "$BODY" ]]; then
+  BODY="${RAW:0:250}"
+  [[ ${#RAW} -gt 250 ]] && BODY="${BODY}…"
+fi
+[[ -z "$BODY" ]] && BODY="(no text in last response)"
+
+MESSAGE="📁 ${PROJECT}"$'\n\n'"${BODY}"
+
+PAYLOAD=$(jq -cn \
+  --arg title "🤖 Claude finished" \
+  --arg msg "$MESSAGE" \
+  --arg src "Claude Code" \
+  '{title:$title, message:$msg, source:$src,
+    smallIcon:"mdi:robot-happy", smallIconColor:"#CC785C",
+    largeIcon:"mdi:check-circle",
+    corner:"top_end", duration:15}')
+
+curl -s -m 3 -X POST "$TV" \
+  -H "Content-Type: application/json" \
+  -d "$PAYLOAD" > /dev/null 2>&1 &
+
+exit 0</code></pre>
+
+<p>Save (Ctrl+O, Enter, Ctrl+X in nano) and make the file executable:</p>
+<pre><code>chmod +x ~/.claude/hooks/tv-notify.sh</code></pre>
+
+<h2><span class="step-num">5</span> Register the hook in settings.json</h2>
+<p>Open <code>~/.claude/settings.json</code> and add the <code>hooks</code> section:</p>
+<pre><code>{
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "/Users/YOUR_USERNAME/.claude/hooks/tv-notify.sh"
+          }
+        ]
+      }
+    ]
+  }
+}</code></pre>
+
+<div class="callout warn">
+  <b>Important:</b> Replace <code>YOUR_USERNAME</code> with your macOS username (check with <code>echo $USER</code>). You must use an absolute path here — <code>~</code> is not expanded by Claude Code.
+</div>
+
+<h2><span class="step-num">6</span> Live test</h2>
+<ol>
+  <li>Open a <b>new</b> terminal window (settings are loaded at the start of each Claude Code session).</li>
+  <li><code>cd</code> into any project: <code>cd ~/code/my-project</code></li>
+  <li>Run: <code>claude</code></li>
+  <li>Ask for something short: "say hi"</li>
+  <li>The moment Claude finishes replying → a notification pops on the TV with the project name and a Hebrew summary of the reply.</li>
+</ol>
+
+<hr>
+
+<h2>Customization</h2>
+
+<h3>Colors and icons</h3>
+<ul>
+  <li><code>smallIcon</code> / <code>largeIcon</code>: any <a href="https://pictogrammers.com/library/mdi/">Material Design Icon</a> as <code>mdi:robot-happy</code>, <code>mdi:alert</code>, <code>mdi:bell</code>, etc.</li>
+  <li><code>smallIconColor</code>: hex, e.g. <code>#CC785C</code> (Claude orange), <code>#FF0000</code> (red), <code>#00FF00</code> (green).</li>
+</ul>
+
+<h3>Position and duration</h3>
+<ul>
+  <li><code>corner</code>: <code>top_start</code>, <code>top_end</code>, <code>bottom_start</code>, <code>bottom_end</code>. Note that <code>start</code> / <code>end</code> flip under RTL system locale — if the TV is in Hebrew, <code>top_start</code> maps to the right-hand corner.</li>
+  <li><code>duration</code>: display time in seconds (8-15 feels right).</li>
+</ul>
+
+<h3>Skip the haiku summary (free and instant)</h3>
+<p>If you'd rather not spend on haiku calls, delete the whole <code>if [[ -n "$RAW" ]]</code> block in the script. The fallback (raw text, truncated to 250 chars) will run instead — zero latency, zero cost, but no Hebrew translation.</p>
+
+<h2>Troubleshooting</h2>
+<ul>
+  <li><b>No notifications appearing:</b> Check the IP is correct, TvOverlay is running with the "Display over other apps" permission, and the Mac/TV are on the same network.</li>
+  <li><b>Summary comes in English:</b> haiku occasionally ignores the instruction. If it persists, re-word the <code>PROMPT</code> in the script or try <code>--model sonnet</code>.</li>
+  <li><b>Hook feels slow:</b> our tests ran 8-18 seconds. Claude Code allows Stop hooks up to 60 seconds before timing out.</li>
+  <li><b>Temporarily disable:</b> <code>chmod -x ~/.claude/hooks/tv-notify.sh</code>. Re-enable with <code>chmod +x</code>.</li>
+</ul>
+
+<div class="footer">
+  TvOverlay · Claude Code · Anthropic · Guide compiled April 2026
+</div>
+
+</body>
+</html>
